@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Shortest Path - Universitas Bengkulu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 320px; width: 100%; border-radius: 14px; z-index: 1; }
+        .glass-card {
+            background: linear-gradient(135deg, rgba(152, 191, 226, 0.95) 0%, rgba(79, 141, 221, 0.7) 50%, rgb(205, 219, 243) 100%);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid #292a27;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-cover bg-center font-sans text-gray-800 flex items-center justify-center p-4 relative before:content-[''] before:absolute before:inset-0 before:bg-slate-900/20 before:z-0" style="background-image: url('background_sistem.png');">
+
+    <div class="w-full max-w-6xl mx-auto glass-card rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-6 relative z-10">
+        
+        <div class="flex flex-col items-center justify-center text-center mb-6 border-b border-slate-900/20 pb-4">
+            <img src="https://pelajarinfo.id/wp-content/uploads/2021/03/Universitas-Bengkulu-Logo.png" alt="Logo UNIB" class="h-16 w-auto drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)] mb-2">
+            <h1 class="text-3xl font-black tracking-tight bg-gradient-to-r from-blue-900 via-blue-700 to-slate-900 bg-clip-text text-transparent uppercase">UNIVERSITAS BENGKULU</h1>
+            <p class="text-xs text-blue-700 font-extrabold tracking-widest mt-0.5 uppercase">SISTEM OPTIMASI RUTE KAMPUS BERBASIS ALGORITMA DIJKSTRA</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-4 bg-white/90 rounded-xl border-2 border-slate-900 p-5 flex flex-col justify-between shadow-sm">
+                <div>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-700 mb-3 flex items-center gap-2"><span>🛰️</span> PANEL PENCARIAN RUTE</h2>
+                    <div class="space-y-3 mb-4">
+                        <div class="bg-white p-2.5 rounded-lg border border-slate-400">
+                            <label class="block font-bold text-[10px] text-gray-400 uppercase">Titik Awal:</label>
+                            <select id="titikAwal" class="w-full bg-transparent font-bold text-sm text-gray-800"></select>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-lg border border-slate-400">
+                            <label class="block font-bold text-[10px] text-blue-700 uppercase">Tujuan:</label>
+                            <select id="titikTujuan" class="w-full bg-transparent font-bold text-sm text-gray-800"></select>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-lg border border-slate-400">
+                            <label class="block font-bold text-[10px] text-gray-400 uppercase">Pencarian Rute:</label>
+                            <select id="jenisBobot" class="w-full bg-transparent font-semibold text-sm text-gray-700">
+                                <option value="jarak">📏 Jarak Terpendek (Meter)</option>
+                                <option value="waktu_jalan">🚶 Waktu Jalan Kaki</option>
+                                <option value="waktu_motor">🏍️ Waktu Naik Motor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="prosesNavigasi()" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl uppercase text-xs">Hitung Rute Optimal</button>
+                </div>
+                <div id="hasilPanel" class="hidden mt-4 p-3 bg-slate-50 rounded-xl border-2 border-slate-900">
+                    <div class="text-[10px] font-bold text-slate-900 uppercase mb-1.5">AI Hasil Analisis:</div>
+                    <div class="text-xs text-gray-700 mb-1.5"><span class="text-gray-400 block font-bold text-[9px] uppercase">Rute Terpilih:</span><span id="outputRute" class="text-blue-800 font-mono font-bold"></span></div>
+                    <div class="text-xs text-gray-700"><span class="text-gray-400 block font-bold text-[9px] uppercase">Total Akumulasi:</span><span id="outputTotal" class="text-emerald-700 font-extrabold text-sm"></span></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-2 flex flex-col gap-3">
+                    <div class="bg-blue-600/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-slate-900"><div id="map"></div></div>
+                    <div class="bg-slate-900 text-slate-100 rounded-xl p-3 border-2 border-slate-900 flex items-center justify-between">
+                        <span class="text-[10px] font-mono text-emerald-400 font-black">INFO SISTEM:</span>
+                        <div class="w-full mx-4 overflow-hidden"><div class="animate-pulse text-[11px] font-mono">Navigasi Cerdas Kampus UNIB - 9 Nodes Aktif Terkoneksi</div></div>
+                        <div id="liveClock" class="text-[10px] font-mono font-bold">00:00:00</div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="bg-white p-4 rounded-xl border-2 border-slate-900 text-center"><div id="infoIkon" class="text-3xl">🌤️</div><div id="infoSuhu" class="text-base font-black">32°C</div><div id="infoStatus" class="text-[9px] text-emerald-600 font-bold">Cerah</div></div>
+                    <div class="bg-white p-4 rounded-xl border-2 border-slate-900 text-center"><div class="text-xl">🟢</div><div class="text-[9px] font-bold text-gray-400 uppercase">Status Sistem</div><div class="text-sm font-black">9 Titik Aktif</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center text-[10px] text-slate-900/40 font-bold mt-5 pt-3 border-t border-slate-900/20">© 2026 Teknik Informatika - Universitas Bengkulu • By Widya Rustri Pratiwi</div>
+    </div>
+
+    <script src="graph.js"></script>
+    <script src="dijkstra.js"></script>
+    <script>
+        const opts = Object.keys(petaUNIB).map(k => `<option value="${k}">${k.replace(/_/g, ' ')}</option>`).join('');
+        document.getElementById('titikAwal').innerHTML = opts; document.getElementById('titikTujuan').innerHTML = opts;
+        const map = L.map('map', { attributionControl: false }).setView([-3.7595, 102.2680], 16); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let activePolyline = null;
+        for (let n in petaUNIB) L.marker(petaUNIB[n].koordinat).addTo(map).bindPopup(n.replace(/_/g, ' '));
+
+        function prosesNavigasi() {
+            const start = document.getElementById('titikAwal').value, end = document.getElementById('titikTujuan').value, mode = document.getElementById('jenisBobot').value;
+            if(start === end) return alert("Pilih gedung yang berbeda!");
+            const h = cariRuteTerpendek(petaUNIB, start, end, mode);
+            if (h.sukses) {
+                document.getElementById('hasilPanel').classList.remove('hidden');
+                document.getElementById('outputRute').innerText = h.rute.join(' ➔ ');
+                let total = 0, coords = [];
+                for(let i=0; i<h.rute.length; i++) {
+                    coords.push(petaUNIB[h.rute[i]].koordinat);
+                    if(i < h.rute.length-1) total += petaUNIB[h.rute[i]].tetangga[h.rute[i+1]][mode];
+                }
+                document.getElementById('outputTotal').innerText = mode === 'jarak' ? total + " Meter" : Math.floor(total/60) + " Menit " + (total%60) + " Detik";
+                if(activePolyline) map.removeLayer(activePolyline);
+                activePolyline = L.polyline(coords, {color: '#2563eb', weight: 5, dashArray: '6, 6'}).addTo(map);
+                map.fitBounds(activePolyline.getBounds());
+            }
+        }
+        setInterval(() => document.getElementById('liveClock').innerText = new Date().toLocaleTimeString(), 1000);
+    </script>
+</body>
+</html>
